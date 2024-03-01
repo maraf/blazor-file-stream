@@ -1,0 +1,46 @@
+﻿@page "/"
+
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<PageTitle>@Title</PageTitle>
+<div class="d-flex flex-column">
+    <h1>@Title</h1>
+    <div class="mb-4">
+        <button class="btn btn-primary" @onclick="@(() => SetImageAsync("/icon-192.png"))">
+            Show image
+        </button>
+        <button class="btn btn-primary" @onclick="@(() => SetImageAsync("/work-with-images-in-blazor.pdf"))">
+            Show PDF
+        </button>
+        <span class="text-muted ms-2">
+            (The important thing is to set content-type on Blob instance)
+        </span>
+    </div>
+    <iframe id="iframe" style="height: calc(100vh - 200px)" />
+</div>
+
+
+@code 
+{
+    const string Title = "File streaming from Blazor to iframe";
+
+    private async Task<(Stream, string?)> GetImageStreamAsync(string url)
+    {
+        var response = await Http.GetAsync(url);
+        string? contentType = null;
+        if (response.Content.Headers.TryGetValues("Content-Type", out var values))
+            contentType = values.FirstOrDefault();
+
+        Console.WriteLine(contentType);
+        return (await response.Content.ReadAsStreamAsync(), contentType);
+    }
+
+    private async Task SetImageAsync(string url)
+    {
+        var (imageStream, contentType) = await GetImageStreamAsync(url);
+        @* var (imageStream, contentType) = await GetImageStreamAsync("/files/Program.pdf"); *@
+        var dotnetImageStream = new DotNetStreamReference(imageStream);
+        await JS.InvokeVoidAsync("setIframeSource", "iframe", dotnetImageStream, contentType);
+    }
+}
